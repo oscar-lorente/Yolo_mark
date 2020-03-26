@@ -262,73 +262,31 @@ int main(int argc, char *argv[])
 		std::locale loccomma(std::locale::classic(), new comma);
 		std::locale::global(loccomma);
 
-		std::string images_path = "./";
+    std::string dataset_path;
+    std::string dataset;
+    std::string scene;
+    std::string gt_path;
+		std::string images_path;
+    std::string train_filename;
+    std::string synset_filename;
 
-		if (argc >= 2) {
-			images_path = std::string(argv[1]);         // path to images, train and synset
+		if (argc >= 6) {
+			dataset_path = std::string(argv[1]);      // path to datasets
+      dataset = std::string(argv[2]);           // chosen dataset
+      scene = std::string(argv[3]);             // chosen scene
+      gt_path = dataset_path + "gt/" + dataset + scene; // path to groundtruth
+      images_path = dataset_path + "img/" + dataset + scene; // path to images
+      train_filename = std::string(argv[4]);		// file containing: list of images
+      synset_filename = std::string(argv[5]);		// file containing: object names
 		}
 		else {
-			std::cout << "Usage: [path_to_images] [train.txt] [obj.names] \n";
+			std::cout << "Usage: [path_to_datasets] [dataset] [scene] [train.txt] [obj.names]\n";
 			return 0;
-		}
-
-		std::string train_filename = images_path + "train.txt";
-		std::string synset_filename = images_path + "obj.names";
-
-		if (argc >= 3) {
-			train_filename = std::string(argv[2]);		// file containing: list of images
-		}
-
-		if (argc >= 4) {
-			synset_filename = std::string(argv[3]);		// file containing: object names
 		}
 
         // optical flow tracker
         Tracker_optflow tracker_optflow;
         cv::Mat optflow_img;
-
-		// capture frames from video file - 1 frame per 3 seconds of video
-		if (argc >= 4 && (train_filename == "cap_video" || train_filename == "cap_video_backward")) {
-			const std::string videofile = synset_filename;
-			cv::VideoCapture cap(videofile);
-#ifndef CV_VERSION_EPOCH    // OpenCV 3.x
-            const int fps = cap.get(cv::CAP_PROP_FPS);
-#else                        // OpenCV 2.x
-            const int fps = cap.get(CV_CAP_PROP_FPS);
-#endif
-            int frame_counter = 0, image_counter = 0;
-            int backward = (train_filename == "cap_video_backward") ? 1 : 0;
-            if (backward) image_counter = 99999999; // 99M
-			float save_each_frames = 50;
-			if (argc >= 5) save_each_frames = std::stoul(std::string(argv[4]));
-
-			int pos_filename = 0;
-			if ((1 + videofile.find_last_of("\\")) < videofile.length()) pos_filename = 1 + videofile.find_last_of("\\");
-			if ((1 + videofile.find_last_of("/")) < videofile.length()) pos_filename = std::max(pos_filename, 1 + (int)videofile.find_last_of("/"));
-			std::string const filename = videofile.substr(pos_filename);
-			std::string const filename_without_ext = filename.substr(0, filename.find_last_of("."));
-
-			for (cv::Mat frame; cap >> frame, cap.isOpened() && !frame.empty();) {
-				cv::imshow("video cap to frames", frame);
-#ifndef CV_VERSION_EPOCH
-				int pressed_key = cv::waitKeyEx(20);	// OpenCV 3.x
-#else
-				int pressed_key = cv::waitKey(20);		// OpenCV 2.x
-#endif
-				if (pressed_key == 27 || pressed_key == 1048603) break;  // ESC - exit (OpenCV 2.x / 3.x)
-				if (frame_counter++ >= save_each_frames) {		// save frame for each 3 second
-					frame_counter = 0;
-                    std::stringstream image_counter_ss;
-                    image_counter_ss << std::setw(8) << std::setfill('0') << image_counter;
-                    if (backward) image_counter--;
-                    else image_counter++;
-					std::string img_name = images_path + "/" + filename_without_ext + "_" + image_counter_ss.str() + ".jpg";
-					std::cout << "saved " << img_name << std::endl;
-					cv::imwrite(img_name, frame);
-				}
-			}
-			exit(0);
-		}
 
 		bool show_mouse_coords = false;
 		std::vector<std::string> filenames_in_folder;
@@ -336,7 +294,7 @@ int main(int argc, char *argv[])
 		cv::String images_path_cv = images_path;
 		std::vector<cv::String> filenames_in_folder_cv;
 		glob(images_path_cv, filenames_in_folder_cv); // void glob(String pattern, std::vector<String>& result, bool recursive = false);
-		for (auto &i : filenames_in_folder_cv) 
+		for (auto &i : filenames_in_folder_cv)
 			filenames_in_folder.push_back(i);
 
 		std::vector<std::string> jpg_filenames_path;
@@ -359,10 +317,10 @@ int main(int argc, char *argv[])
 			std::string const ext = i.substr(i.find_last_of(".") + 1);
 			std::string const filename_without_ext = filename.substr(0, filename.find_last_of("."));
 
-			if (ext == "jpg" || ext == "JPG" || 
+			if (ext == "jpg" || ext == "JPG" ||
 				ext == "jpeg" || ext == "JPEG" ||
 				ext == "bmp" || ext == "BMP" ||
-				ext == "png" || ext == "PNG" || 
+				ext == "png" || ext == "PNG" ||
 				ext == "ppm" || ext == "PPM")
 			{
 				jpg_filenames_without_ext.push_back(filename_without_ext);
@@ -389,7 +347,7 @@ int main(int argc, char *argv[])
 			std::sort(sorted_names_without_ext.begin(), sorted_names_without_ext.end());
 			for (size_t i = 1; i < sorted_names_without_ext.size(); ++i) {
 				if (sorted_names_without_ext[i - 1] == sorted_names_without_ext[i]) {
-					std::cout << "Error: Can't create " << sorted_names_without_ext[i] << 
+					std::cout << "Error: Can't create " << sorted_names_without_ext[i] <<
 						".txt file for several images with different extensions but with the same filename: "
 						<< sorted_names_without_ext[i] << std::endl;
 					// print duplicate images
@@ -413,7 +371,7 @@ int main(int argc, char *argv[])
 			txt_filenames.begin(), txt_filenames.end(),
 			difference_filenames.begin());
 		difference_filenames.resize(dif_it_end - difference_filenames.begin());
-				
+
 		auto inter_it_end = std::set_intersection(jpg_filenames_without_ext.begin(), jpg_filenames_without_ext.end(),
 			txt_filenames.begin(), txt_filenames.end(),
 			intersect_filenames.begin());
@@ -445,7 +403,7 @@ int main(int argc, char *argv[])
 		}
 
 		for (size_t i = 0; i < intersect_filenames.size(); ++i) {
-			ofs_train << images_path << "/" << intersect_filenames[i] << "." << intersect_ext[i] << std::endl;
+			ofs_train << images_path << intersect_filenames[i] << "." << intersect_ext[i] << std::endl;
 		}
 		ofs_train.flush();
 		std::cout << "File opened for output: " << train_filename << std::endl;
@@ -510,14 +468,14 @@ int main(int argc, char *argv[])
                 move_rect_id = -1;
 
 				// save current coords
-				if (old_trackbar_value >= 0) // && current_coord_vec.size() > 0) // Yolo v2 can processes background-image without objects
+				if (old_trackbar_value >= 0 && current_coord_vec.size() > 0) // Yolo v2 can processes background-image without objects
 				{
 					try
 					{
 						std::string const jpg_filename = jpg_filenames[old_trackbar_value];
 						std::string const filename_without_ext = jpg_filename.substr(0, jpg_filename.find_last_of("."));
 						std::string const txt_filename = filename_without_ext + ".txt";
-						std::string const txt_filename_path = images_path + "/" + txt_filename;
+						std::string const txt_filename_path = gt_path + txt_filename;
 
 						std::cout << "txt_filename_path = " << txt_filename_path << std::endl;
 
@@ -541,12 +499,12 @@ int main(int argc, char *argv[])
 								relative_center_x << " " << relative_center_y << " " <<
 								relative_width << " " << relative_height << std::endl;
 						}
-						
+
 						// store [path/image name.jpg] to train.txt
 						auto it = std::find(difference_filenames.begin(), difference_filenames.end(), filename_without_ext);
 						if (it != difference_filenames.end())
 						{
-							ofs_train << images_path << "/" << jpg_filename << std::endl;
+							ofs_train << images_path << jpg_filename << std::endl;
 							ofs_train.flush();
 
 							size_t new_size = std::remove(difference_filenames.begin(), difference_filenames.end(), filename_without_ext) -
@@ -561,7 +519,7 @@ int main(int argc, char *argv[])
 				for (size_t i = 0; i < preview_number && (i + trackbar_value) < jpg_filenames_path.size(); ++i)
 				{
 					Mat img = imread(jpg_filenames_path[trackbar_value + i]);
-					// check if the image has been loaded successful to prevent crash 
+					// check if the image has been loaded successful to prevent crash
 					if (img.cols == 0)
 					{
 						continue;
@@ -585,7 +543,7 @@ int main(int argc, char *argv[])
 							std::string const jpg_filename = jpg_filenames[trackbar_value];
 							std::string const txt_filename = jpg_filename.substr(0, jpg_filename.find_last_of(".")) + ".txt";
 							//std::cout << (images_path + "/" + txt_filename) << std::endl;
-							std::ifstream ifs(images_path + "/" + txt_filename);
+							std::ifstream ifs(gt_path + txt_filename);
                             if (copy_previous_marks) copy_previous_marks = false;
                             else if (tracker_copy_previous_marks) {
                                 tracker_copy_previous_marks = false;
@@ -600,7 +558,7 @@ int main(int argc, char *argv[])
 								coord.id = -1;
 								ss >> coord.id;
 								if (coord.id < 0) continue;
-								float relative_coord[4] = { -1, -1, -1, -1 };  // rel_center_x, rel_center_y, rel_width, rel_height                          
+								float relative_coord[4] = { -1, -1, -1, -1 };  // rel_center_x, rel_center_y, rel_width, rel_height
 								for (size_t i = 0; i < 4; i++) if(!(ss >> relative_coord[i])) continue;
 								for (size_t i = 0; i < 4; i++) if (relative_coord[i] < 0) continue;
 								coord.abs_rect.x = (relative_coord[0] - relative_coord[2] / 2) * (float)full_image_roi.cols;
@@ -625,7 +583,7 @@ int main(int argc, char *argv[])
 						line(dst_roi, Point2i(80, 88), Point2i(85, 93), Scalar(50, 200, 100), 2);
 						line(dst_roi, Point2i(85, 93), Point2i(93, 85), Scalar(50, 200, 100), 2);
 					}
-                    
+
 				}
 				std::cout << " trackbar_value = " << trackbar_value << std::endl;
 
@@ -824,7 +782,7 @@ int main(int argc, char *argv[])
 
 				rectangle(full_image_roi, i.abs_rect, color_rect, mark_line_width);
 			}
-            
+
             // remove selected rect
             if (delete_selected) {
                 delete_selected = false;
@@ -920,7 +878,7 @@ int main(int argc, char *argv[])
 
 			if (pressed_key >= 0)
 				for (int i = 0; i < 5; ++i) cv::waitKey(1);
-			
+
 			if (exit_flag) break;	// exit after saving
 			if (pressed_key == 27 || pressed_key == 1048603) exit_flag = true;// break;  // ESC - save & exit
 
