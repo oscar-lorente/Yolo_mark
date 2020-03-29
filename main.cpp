@@ -15,7 +15,7 @@
 #include <opencv2/core/version.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-//#include <opencv2/optflow.hpp>
+// #include <opencv2/optflow.hpp>
 #include <opencv2/video/tracking.hpp>
 
 #ifdef _DEBUG
@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
       dataset = std::string(argv[2]);           // chosen dataset
       scene = std::string(argv[3]);             // chosen scene
       gt_path = dataset_path + "gt/" + dataset + scene; // path to groundtruth
-      images_path = dataset_path + "img/" + dataset + scene; // path to images
+      images_path = dataset_path + "datasets/" + dataset + scene; // path to images
       train_filename = std::string(argv[4]);		// file containing: list of images
       synset_filename = std::string(argv[5]);		// file containing: object names
 		}
