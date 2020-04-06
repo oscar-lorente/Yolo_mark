@@ -11,6 +11,8 @@
 #include <fstream>  // std::ofstream
 #include <algorithm> // std::unique
 
+#include <boost/filesystem.hpp>
+
 #include <opencv2/opencv.hpp>			// C++
 #include <opencv2/core/version.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -262,31 +264,54 @@ int main(int argc, char *argv[])
 		std::locale loccomma(std::locale::classic(), new comma);
 		std::locale::global(loccomma);
 
-    std::string dataset_path;
+    std::string dataset_path = std::string(std::getenv("MEDIA")) + "/image/"; // path to datasets folder
+    std::string train_filename = "../x64/Release/data/train.txt"; // file containing: list of images
+    std::string synset_filename = "../x64/Release/data/obj.names"; // file containing: object names
+
     std::string dataset;
     std::string scene;
     std::string gt_path;
 		std::string images_path;
-    std::string train_filename;
-    std::string synset_filename;
 
-		if (argc >= 6) {
-			dataset_path = std::string(argv[1]);      // path to datasets
-      dataset = std::string(argv[2]);           // chosen dataset
-      scene = std::string(argv[3]);             // chosen scene
-      gt_path = dataset_path + "gt/" + dataset + scene; // path to groundtruth
-      images_path = dataset_path + "datasets/" + dataset + scene; // path to images
-      train_filename = std::string(argv[4]);		// file containing: list of images
-      synset_filename = std::string(argv[5]);		// file containing: object names
+    bool txtSaved = true;
+
+		if (argc == 3) {
+      dataset = std::string(argv[1]);           // chosen dataset
+      scene = std::string(argv[2]);             // chosen scene
 		}
 		else {
-			std::cout << "Usage: [path_to_datasets] [dataset] [scene] [train.txt] [obj.names]\n";
+			std::cout << "Usage: ./yolo_mark [dataset] [scene]\n";
 			return 0;
 		}
 
-        // optical flow tracker
-        Tracker_optflow tracker_optflow;
-        cv::Mat optflow_img;
+    gt_path = dataset_path + "gt/" + dataset + "/" + scene + "/"; // path to groundtruth
+    images_path = dataset_path + "datasets/" + dataset + "/" + scene + "/"; // path to images
+
+    if (!boost::filesystem::is_directory(images_path)) {
+      std::cout << "Error: folder " << images_path << " doesn't exist" << std::endl;
+      return 0;
+    }
+
+    if (!boost::filesystem::is_directory(gt_path)) {
+      char createFolder;
+      do {
+        std::cout << "Folder " << gt_path << " doesn't exist, do you want to create it? (y/n): ";
+        std::cin >> createFolder;
+      } while((createFolder != 'y') && (createFolder != 'Y') && (createFolder != 'n') && (createFolder != 'N'));
+
+      if((createFolder == 'y') || (createFolder == 'Y')) {
+        boost::filesystem::create_directories(gt_path);
+        std::cout << "Folder " << gt_path << " created successfully" << std::endl;
+      }
+      else {
+        std::cout << "WARNING: CHANGES DON'T TAKE EFFECT, GROUNDTRUTH NOT SAVED" << std::endl;
+        txtSaved = false;
+      }
+    }
+
+    // optical flow tracker
+    Tracker_optflow tracker_optflow;
+    cv::Mat optflow_img;
 
 		bool show_mouse_coords = false;
 		std::vector<std::string> filenames_in_folder;
@@ -477,7 +502,12 @@ int main(int argc, char *argv[])
 						std::string const txt_filename = filename_without_ext + ".txt";
 						std::string const txt_filename_path = gt_path + txt_filename;
 
-						std::cout << "txt_filename_path = " << txt_filename_path << std::endl;
+            if (txtSaved) {
+              std::cout << "txt_filename_path = " << txt_filename_path << std::endl;
+            }
+            else {
+              std::cout << "WARNING: CHANGES WON'T TAKE EFFECT, GROUNDTRUTH WON'T BE SAVED" << std::endl;
+            }
 
 						std::ofstream ofs(txt_filename_path, std::ios::out | std::ios::trunc);
 						ofs << std::fixed;

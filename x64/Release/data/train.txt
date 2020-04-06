@@ -1,0 +1,2 @@
+/home/oscar/media/image/datasets/outdoor/scene8/20200219_181224_752.png
+/home/oscar/media/image/datasets/outdoor/scene8/20200219_181232_212.png
