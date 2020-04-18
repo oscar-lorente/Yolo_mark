@@ -525,7 +525,8 @@ int main(int argc, char *argv[])
 							if (relative_center_x <= 0) continue;
 							if (relative_center_y <= 0) continue;
 
-							ofs << i.id << " " <<
+              // 0: person classID (i.id)
+							ofs << 0 << " " <<
 								relative_center_x << " " << relative_center_y << " " <<
 								relative_width << " " << relative_height << std::endl;
 						}
@@ -785,7 +786,7 @@ int main(int argc, char *argv[])
 			{
                 auto &i = current_coord_vec.at(k);
 				std::string synset_name;
-				if (i.id < synset_txt.size()) synset_name = " - " + synset_txt[i.id];
+				// if (i.id < synset_txt.size()) synset_name = " - " + synset_txt[i.id];
 
 				int offset = i.id * 25;
 				int red = (offset + 0) % 255 * ((i.id + 2) % 3);
