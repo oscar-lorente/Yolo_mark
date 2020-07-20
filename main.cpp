@@ -255,6 +255,7 @@ protected:
 	char do_decimal_point() const { return '.';	}
 };
 
+// ----------------------- main -----------------------
 
 int main(int argc, char *argv[])
 {
@@ -264,49 +265,36 @@ int main(int argc, char *argv[])
 		std::locale loccomma(std::locale::classic(), new comma);
 		std::locale::global(loccomma);
 
-    std::string dataset_path = std::string(std::getenv("MEDIA")) + "/image/"; // path to datasets folder
-    std::string train_filename = "../x64/Release/data/train.txt"; // file containing: list of images
     std::string synset_filename = "../x64/Release/data/obj.names"; // file containing: object names
+    std::string train_filename = "../x64/Release/data/train.txt";  // file to store list of images
 
     std::string dataset;
     std::string scene;
-    std::string gt_path;
-		std::string images_path;
-
-    bool txtSaved = true;
 
 		if (argc == 3) {
-      dataset = std::string(argv[1]);           // chosen dataset
-      scene = std::string(argv[2]);             // chosen scene
+      dataset = std::string(argv[1]); // chosen dataset
+      scene = std::string(argv[2]);   // chosen scene
 		}
 		else {
-			std::cout << "Usage: ./yolo_mark [dataset] [scene]\n";
+			std::cout << "Usage: [./yolo_mark] [dataset] [scene]\n";
 			return 0;
 		}
 
-    gt_path = dataset_path + "gt/" + dataset + "/" + scene + "/"; // path to groundtruth
-    images_path = dataset_path + "datasets/" + dataset + "/" + scene + "/"; // path to images
+    // path to datasets folder
+    std::string dataset_path = std::string(std::getenv("MEDIA")) + "/image/";
 
+    // path to images
+    std::string images_path = dataset_path + "datasets/" + dataset + "/" + scene + "/";
     if (!boost::filesystem::is_directory(images_path)) {
       std::cout << "Error: folder " << images_path << " doesn't exist" << std::endl;
       return 0;
     }
 
+    // path to store the groundtruth
+    std::string gt_path = dataset_path + "gt/" + dataset + "/" + scene + "/";
     if (!boost::filesystem::is_directory(gt_path)) {
-      char createFolder;
-      do {
-        std::cout << "Folder " << gt_path << " doesn't exist, do you want to create it? (y/n): ";
-        std::cin >> createFolder;
-      } while((createFolder != 'y') && (createFolder != 'Y') && (createFolder != 'n') && (createFolder != 'N'));
-
-      if((createFolder == 'y') || (createFolder == 'Y')) {
-        boost::filesystem::create_directories(gt_path);
-        std::cout << "Folder " << gt_path << " created successfully" << std::endl;
-      }
-      else {
-        std::cout << "WARNING: CHANGES DON'T TAKE EFFECT, GROUNDTRUTH NOT SAVED" << std::endl;
-        txtSaved = false;
-      }
+      std::cout << "Error: folder " << gt_path << " doesn't exist" << std::endl;
+      return 0;
     }
 
     // optical flow tracker
@@ -330,7 +318,7 @@ int main(int argc, char *argv[])
 		std::vector<std::string> jpg_in_train;
 		std::vector<std::string> synset_txt;
 
-        // image-paths to txt-paths
+    // image-paths to txt-paths
 		for (auto &i : filenames_in_folder)
 		{
 			int pos_filename = 0;
@@ -433,7 +421,6 @@ int main(int argc, char *argv[])
 		ofs_train.flush();
 		std::cout << "File opened for output: " << train_filename << std::endl;
 
-
 		// load synset.txt
 		{
 			std::ifstream ifs(synset_filename);
@@ -502,12 +489,7 @@ int main(int argc, char *argv[])
 						std::string const txt_filename = filename_without_ext + ".txt";
 						std::string const txt_filename_path = gt_path + txt_filename;
 
-            if (txtSaved) {
-              std::cout << "txt_filename_path = " << txt_filename_path << std::endl;
-            }
-            else {
-              std::cout << "WARNING: CHANGES WON'T TAKE EFFECT, GROUNDTRUTH WON'T BE SAVED" << std::endl;
-            }
+            std::cout << "txt_filename_path = " << txt_filename_path << std::endl;
 
 						std::ofstream ofs(txt_filename_path, std::ios::out | std::ios::trunc);
 						ofs << std::fixed;
@@ -525,8 +507,7 @@ int main(int argc, char *argv[])
 							if (relative_center_x <= 0) continue;
 							if (relative_center_y <= 0) continue;
 
-              // 0: person classID (i.id)
-							ofs << 0 << " " <<
+							ofs << i.id << " " <<
 								relative_center_x << " " << relative_center_y << " " <<
 								relative_width << " " << relative_height << std::endl;
 						}
@@ -560,7 +541,7 @@ int main(int argc, char *argv[])
 					Rect rect_dst(Point2i(x_shift, 0), preview.size());
 					Mat dst_roi = frame(rect_dst);
 					preview.copyTo(dst_roi);
-					//rectangle(frame, rect_dst, Scalar(200, 150, 200), 2);
+					// rectangle(frame, rect_dst, Scalar(200, 150, 200), 2);
 					putText(dst_roi, jpg_filenames[trackbar_value + i], Point2i(0, 10), FONT_HERSHEY_COMPLEX_SMALL, 0.5, Scalar::all(255));
 
 					if (i == 0)
@@ -786,7 +767,7 @@ int main(int argc, char *argv[])
 			{
                 auto &i = current_coord_vec.at(k);
 				std::string synset_name;
-				// if (i.id < synset_txt.size()) synset_name = " - " + synset_txt[i.id];
+				if (i.id < synset_txt.size()) synset_name = " - " + synset_txt[i.id];
 
 				int offset = i.id * 25;
 				int red = (offset + 0) % 255 * ((i.id + 2) % 3);
